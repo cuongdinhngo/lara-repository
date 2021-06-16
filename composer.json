@@ -1,0 +1,23 @@
+{
+    "name": "cuongnd88/lara-repository",
+    "description": "Auto-generated Interface and Repository files",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Ngo Dinh Cuong",
+            "email": "dinhcuongngo@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Cuongnd88\\LaraRepo\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Cuongnd88\\LaraRepo\\LaraRepoServiceProvider"
+            ]
+        }
+    }
+}
