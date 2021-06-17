@@ -2,7 +2,7 @@
 
 namespace DummyNamespace;
 
-interface RepositoryInterface
+interface DummyItemRepositoryInterface
 {
     /**
      * Get all

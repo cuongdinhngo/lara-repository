@@ -2,7 +2,9 @@
 
 namespace DummyNamespace;
 
-abstract class BaseRepository implements RepositoryInterface
+use App\Repositories\RepositoryInterface;
+
+abstract class DummyRepositoryClass implements RepositoryInterface
 {
     protected $model;
 

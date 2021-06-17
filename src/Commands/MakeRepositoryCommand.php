@@ -3,7 +3,7 @@
 namespace Cuongnd88\LaraRepo\Commands;
 
 use Illuminate\Console\GeneratorCommand;
-use Illuminate\Filesystem\Filesystem;
+use Illuminate\Support\Str;
 
 class MakeRepositoryCommand extends GeneratorCommand
 {
@@ -12,14 +12,14 @@ class MakeRepositoryCommand extends GeneratorCommand
      *
      * @var string
      */
-    protected $signature = 'make:repository {--interface=} {--repository=} {--model=} {--repo-extends=}';
+    protected $signature = 'make:repository {--interface=} {--repository=} {--model=} {--extends=}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Auto-generated Interface and Repository files';
+    protected $description = 'Create the interface and Repository files';
 
     /**
      * The type of class being generated.
@@ -28,15 +28,17 @@ class MakeRepositoryCommand extends GeneratorCommand
      */
     protected $type = 'Repository';
 
-    /**
-     * Create a new command instance.
-     *
-     * @return void
-     */
-    // public function __construct()
-    // {
-    //     parent::__construct();
-    // }
+    protected $interfaceInput, $repositoryInput, $modelInput, $extendsInput;
+
+    protected $defaultRepositoryNamespace = 'Repositories';
+
+    protected $baseRepositoryInterface = 'RepositoryInterface';
+
+    protected $baseRepository = 'BaseRepository';
+
+    protected $interfaceClass;
+
+    protected $repositoryClass;
 
     /**
      * Execute the console command.
@@ -45,110 +47,391 @@ class MakeRepositoryCommand extends GeneratorCommand
      */
     public function handle()
     {
-        dump(__METHOD__);
+        try {
+            $this->getOptionsInput();
 
-        $interface = $this->option('interface');
-        $repository = $this->option('repository');
-        $model = $this->option('model');
-        $extends = $this->option('repo-extends');
+            $this->checkOptionsInput();;
 
-        dump($interface, $repository, $model, $extends);
+            $this->makeRepositoryDirectory();
 
-        // $name = $this->qualifyClass($this->getNameInput());
-        // $path = $this->getPath($name);
-        // $this->makeDirectory($path);
+            $this->createBaseInterface();
 
-        // $this->files->put($path, $this->sortImports($this->buildClass($name)));
-        // $this->generateOtpAuthTrait($path, explode('/', $this->getNameInput()));
+            $this->createBaseRepository();
 
-        // $this->migrateNotificationTable();
+            $this->createInterface();
 
-        $this->info($this->type.' created successfully.');
-    }
+            $this->createRepository();
 
-    /**
-     * Migrate Notification table
-     *
-     * @return void
-     */
-    public function migrateNotificationTable()
-    {
-        if (empty(glob(base_path().'/database/migrations/*_create_notifications_table.php'))) {
-            $this->call('notifications:table');
+            $this->mergeRepositoryConfig();
+
+            $this->info($this->type.' created successfully.');
+        } catch (\Exception $e) {
+            report($e);
+            $this->error($e->getMessage());
         }
     }
 
     /**
-     * Generate Otp Auth Trait
-     *
-     * @param  string $path
-     * @param  string $nameInput
+     * Merge repository items and create config file
      *
      * @return void
      */
-    public function generateOtpAuthTrait($path, $nameInput)
+    public function mergeRepositoryConfig()
     {
-        list($path, $name, $otpAuthClass) = $this->qualifyTrait($path, $nameInput);
-        $this->files->put($path, $this->sortImports($this->buildTrait($name, $otpAuthClass)));
+        $filePath = config_path('repositories.php');
+        $content = config('repositories');
+
+        if ($this->files->missing($filePath)) {
+            $content = [];
+        }
+
+        if ($this->interfaceClass && $this->repositoryClass) {
+            $content = array_merge($content, [
+                $this->interfaceClass =>  $this->repositoryClass
+            ]);
+        }
+
+        $stub = $this->files->get(__DIR__.'/../stubs/repositories.stub');
+        $repo = '';
+        foreach ($content as $key => $value) {
+            $repo .= "\t\\" . $key . "::class => \\" . $value . "::class,\n";
+        }
+        $stub = str_replace('__RepositoryArray__', $repo, $stub);
+
+        $this->files->put($filePath, $stub);
     }
 
     /**
-     * To qualify Trait
+     * Make repository directory
      *
-     * @param  string $path
-     * @param  string $nameInput
-     *
-     * @return array
+     * @return void
      */
-    public function qualifyTrait($path, $nameInput)
+    public function makeRepositoryDirectory()
     {
-        $otpAuthClass = array_pop($nameInput);
-        $name = $this->qualifyClass(implode($nameInput).'/'.$this->traitName);
-        $path = str_replace($otpAuthClass, $this->traitName, $path);
-        return [$path, $name, $otpAuthClass];
+        $repositoryPath = app_path().'/'.$this->defaultRepositoryNamespace;
+        if ($this->files->exists($repositoryPath)) {
+            return;
+        }
+        $this->files->makeDirectory($repositoryPath, 0777, true, true);
     }
 
     /**
-     * Build Trait
+     * Create base repository file.
      *
-     * @param  string $name
-     * @param  string $otpAuthClass
+     * @return void
      *
-     * @return string
+     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
      */
-    protected function buildTrait($name, $otpAuthClass)
+    public function createBaseRepository()
     {
-        $stub = $this->files->get($this->getTraitStub());
+        $name = $this->getDefaultRepositoryNamespace().'\\'.$this->baseRepository;
+        $path = $this->getPath($name);
 
-        return $this->replaceNamespaceTrait($stub, $name, $otpAuthClass);
+        if ($this->files->missing($path)) {
+            $stub = __DIR__.'/../stubs/base-repository.stub';
+
+            $this->files->put($path, $this->sortImports($this->buildRepository($name, $interface = null, $stub)));
+        }
+
     }
 
     /**
-     * Replace Namespace Trait
+     * Create repository file
      *
-     * @param  string $stub
-     * @param  string $name
-     * @param  string $otpAuthClass
+     * @param mixed $repo
      *
-     * @return string
+     * @return void
+     *
+     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
      */
-    protected function replaceNamespaceTrait(&$stub, $name, $otpAuthClass)
+    public function createRepository($repo = null)
     {
+        $repository = $repo ?? $this->repositoryInput;
+        $name = $this->qualifyFile($repository);
+        $path = $this->getPath($name);
+
+        if ($this->files->missing($path)) {
+            $this->makeDirectory($path);
+
+            $this->files->put($path, $this->sortImports($this->buildRepository($name, $this->interfaceClass)));
+
+            $this->repositoryClass = $name;
+        }
+    }
+
+    /**
+     * Build repository
+     *
+     * @param string $name
+     * @param string $interface
+     * @param string $baseStub
+     *
+     * @return void
+     */
+    protected function buildRepository($name, $interface, $baseStub = null)
+    {
+        $stub = $this->files->get($baseStub ?? $this->getRepositoryStub());
+
+        return $this->replaceRepository($stub, $name, $interface);
+    }
+
+    /**
+     * Replace repository content
+     *
+     * @param string $stub
+     * @param string $name
+     * @param string $interface
+     *
+     * @return void
+     */
+    public function replaceRepository(&$stub, $name, $interface)
+    {
+        $tmp = explode('\\', $interface);
+        $interface = trim(array_pop($tmp));
+        $model = str_replace('/', '\\', $this->modelInput);
+
         return str_replace(
-            ['DummyNamespace', 'DummyOtpAuthClass'],
-            [$this->getNamespace($name), $otpAuthClass],
+            ['DummyNamespace', 'DummyRepositoryClass', 'DummyRepositoryInterface', 'DummyModel'],
+            [$this->getNamespace($name), $this->replaceClassName($name), $interface, $model],
             $stub
         );
     }
 
     /**
-     * Get Trait Stub
+     * Get repository stub file
      *
      * @return string
      */
-    protected function getTraitStub()
+    public function getRepositoryStub()
     {
-        return __DIR__.'/../stubs/has-otp-auth-trait.stub';
+        return __DIR__.'/../stubs/item-repository.stub';
+    }
+
+    /**
+     * Create base interface file
+     *
+     * @return void
+     */
+    public function createBaseInterface()
+    {
+        $name = $this->getDefaultRepositoryNamespace().'\\'.$this->baseRepositoryInterface;
+        $path = $this->getPath($name);
+
+        if ($this->files->missing($path)) {
+            $stub = __DIR__.'/../stubs/repository-interface.stub';
+
+            $this->files->put($path, $this->sortImports($this->buildInterface($name, $stub)));
+        }
+
+    }
+
+    /**
+     * Create interface file
+     *
+     * @param mixed $interface
+     *
+     * @return void
+     */
+    public function createInterface($interface = null)
+    {
+        $interface = $interface ?? $this->interfaceInput;
+        $interfaceName = $this->qualifyFile($interface);
+        $path = $this->getPath($interfaceName);
+
+        if ($this->files->missing($path)) {
+            $this->makeDirectory($path);
+
+            $this->files->put($path, $this->sortImports($this->buildInterface($interfaceName)));
+
+            $this->interfaceClass = $interfaceName;
+        }
+    }
+
+    /**
+     * Build the class with the given name.
+     *
+     * @param  string  $interfaceName
+     *
+     * @return string
+     *
+     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
+     */
+    protected function buildInterface($interfaceName, $baseStub = null)
+    {
+        $stub = $this->files->get($baseStub ?? $this->getInterfaceStub());
+
+        return $this->replaceNamespaceInterface($stub, $interfaceName);
+    }
+
+    /**
+     * Replace Namespace Interface
+     *
+     * @param  string $stub
+     * @param  string $interfaceName
+     *
+     * @return string
+     */
+    public function replaceNamespaceInterface(&$stub, $interfaceName)
+    {
+        return str_replace(
+            ['DummyNamespace', 'DummyItemRepositoryInterface'],
+            [$this->getNamespace($interfaceName), $this->replaceClassName($interfaceName)],
+            $stub
+        );
+    }
+
+    /**
+     * Replace the class name for the given stub.
+     *
+     * @param  string  $name
+     *
+     * @return string
+     */
+    protected function replaceClassName($name)
+    {
+        return str_replace($this->getNamespace($name).'\\', '', $name);
+    }
+
+    /**
+     * Get the stub file for the generator.
+     *
+     * @return string
+     */
+    protected function getInterfaceStub()
+    {
+        return __DIR__.'/../stubs/item-repository-interface.stub';
+    }
+
+    /**
+     * Get option inputs
+     *
+     * @return void
+     */
+    public function getOptionsInput()
+    {
+        $this->interfaceInput = $this->getInterfaceInput();
+        $this->repositoryInput = $this->getRepositoryInput();
+        $this->modelInput = $this->getModelInput();
+        $this->extendsInput = $this->getExtendsInput();
+    }
+
+    /**
+     * Get interface input
+     *
+     * @return void
+     */
+    public function getInterfaceInput()
+    {
+        return trim($this->option('interface'));
+    }
+
+    /**
+     * Get repository input
+     *
+     * @return void
+     */
+    public function getRepositoryInput()
+    {
+        return trim($this->option('repository'));
+    }
+
+    /**
+     * Get model input
+     *
+     * @return void
+     */
+    public function getModelInput()
+    {
+        return trim($this->option('model'));
+    }
+
+    /**
+     * Get extends input
+     *
+     * @return void
+     */
+    public function getExtendsInput()
+    {
+        return trim($this->option('extends'));
+    }
+
+    /**
+     * Check option input
+     *
+     * @return void
+     *
+     * @throws \Exception
+     */
+    public function checkOptionsInput()
+    {
+        if (empty($this->interfaceInput)) {
+            throw new \Exception("Bad Request. Please input the Interface value");
+        }
+
+        if ($this->interfaceInput && empty($this->repositoryInput)) {
+            throw new \Exception("Bad Request. Please input the Repository value");
+        }
+
+        if ($this->repositoryInput && empty($this->modelInput)) {
+            throw new \Exception("Bad Request. Please input the Model value");
+        }
+    }
+
+    /**
+     * Get default repository namespace
+     *
+     * @return string
+     */
+    public function getDefaultRepositoryNamespace()
+    {
+        return $this->rootNamespace().''.$this->defaultRepositoryNamespace;
+    }
+
+    /**
+     * Qualify file
+     *
+     * @param string $class
+     *
+     * @return string
+     */
+    public function qualifyFile($class)
+    {
+        $class = ltrim($class, '\\/');
+
+        $rootNamespace = $this->getDefaultRepositoryNamespace();
+
+        if (Str::startsWith($class, $rootNamespace)) {
+            return $class;
+        }
+
+        $class = str_replace('/', '\\', $class);
+
+        return $this->qualifyFile(
+            $this->getDefaultNamespace(trim($rootNamespace, '\\')).'\\'.$class
+        );
+    }
+
+        /**
+     * Alphabetically sorts the imports for the given stub.
+     *
+     * @param  string  $stub
+     * @return string
+     */
+    protected function sortImports($stub)
+    {
+        if (preg_match('/(?P<imports>(?:use [^;]+;$\n?)+)/m', $stub, $match)) {
+            $imports = explode("\n", trim($match['imports']));
+
+            if ($this->interfaceClass) {
+                array_push($imports, "use $this->interfaceClass;");
+            }
+
+            sort($imports);
+
+            return str_replace(trim($match['imports']), implode("\n", $imports), $stub);
+        }
+
+        return $stub;
     }
 
     /**
@@ -158,6 +441,6 @@ class MakeRepositoryCommand extends GeneratorCommand
      */
     protected function getStub()
     {
-        return __DIR__.'/../stubs/otp-auth.stub';
+        return ;
     }
 }
