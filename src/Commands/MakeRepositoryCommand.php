@@ -12,7 +12,7 @@ class MakeRepositoryCommand extends GeneratorCommand
      *
      * @var string
      */
-    protected $signature = 'make:repository {--interface=} {--repository=} {--model=}';
+    protected $signature = 'make:repository {--interface=} {--repository=} {--model=} {--repo-extends=}';
 
     /**
      * The console command description.
@@ -45,14 +45,23 @@ class MakeRepositoryCommand extends GeneratorCommand
      */
     public function handle()
     {
-        $name = $this->qualifyClass($this->getNameInput());
-        $path = $this->getPath($name);
-        $this->makeDirectory($path);
+        dump(__METHOD__);
 
-        $this->files->put($path, $this->sortImports($this->buildClass($name)));
-        $this->generateOtpAuthTrait($path, explode('/', $this->getNameInput()));
+        $interface = $this->option('interface');
+        $repository = $this->option('repository');
+        $model = $this->option('model');
+        $extends = $this->option('repo-extends');
 
-        $this->migrateNotificationTable();
+        dump($interface, $repository, $model, $extends);
+
+        // $name = $this->qualifyClass($this->getNameInput());
+        // $path = $this->getPath($name);
+        // $this->makeDirectory($path);
+
+        // $this->files->put($path, $this->sortImports($this->buildClass($name)));
+        // $this->generateOtpAuthTrait($path, explode('/', $this->getNameInput()));
+
+        // $this->migrateNotificationTable();
 
         $this->info($this->type.' created successfully.');
     }
