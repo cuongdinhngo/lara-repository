@@ -50,17 +50,17 @@ class MakeRepositoryCommand extends GeneratorCommand
             $this->getOptionsInput();
 
             $this->checkOptionsInput();;
-    
+
             $this->makeRepositoryDirectory();
-    
+
             $this->createBaseInterface();
-    
+
             $this->createBaseRepository();
-    
+
             $this->createInterface();
 
             $this->allocateOrCreateModel();
-    
+
             $this->createRepository();
 
             $this->mergeRepositoryConfig();
@@ -111,7 +111,7 @@ class MakeRepositoryCommand extends GeneratorCommand
                 $this->interfaceClass =>  $this->repositoryClass
             ]);
         }
-        
+
         $stub = $this->files->get(__DIR__.'/../stubs/repositories.stub');
         $repo = '';
         foreach ($content as $key => $value) {
@@ -263,7 +263,7 @@ class MakeRepositoryCommand extends GeneratorCommand
             $this->makeDirectory($path);
 
             $this->files->put($path, $this->sortImports($this->buildInterface($interfaceName)));
-    
+
             $this->interfaceClass = $interfaceName;
         }
     }
