@@ -4,6 +4,7 @@ namespace Cuongnd88\LaraRepo\Commands;
 
 use Illuminate\Console\GeneratorCommand;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Artisan;
 
 class MakeRepositoryCommand extends GeneratorCommand
 {
@@ -12,14 +13,14 @@ class MakeRepositoryCommand extends GeneratorCommand
      *
      * @var string
      */
-    protected $signature = 'make:repository {--interface=} {--repository=} {--model=} {--extends=}';
+    protected $signature = 'make:repository {--interface= : Generate the Interface file} {--repository= : Generate the Repository file} {--model= : Allocate or Create the Model}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Create the interface and Repository files';
+    protected $description = 'Create the Interface and Repository files';
 
     /**
      * The type of class being generated.
@@ -28,17 +29,15 @@ class MakeRepositoryCommand extends GeneratorCommand
      */
     protected $type = 'Repository';
 
-    protected $interfaceInput, $repositoryInput, $modelInput, $extendsInput;
-
     protected $defaultRepositoryNamespace = 'Repositories';
 
     protected $baseRepositoryInterface = 'RepositoryInterface';
 
     protected $baseRepository = 'BaseRepository';
 
-    protected $interfaceClass;
+    protected $interfaceInput, $repositoryInput, $modelInput;
 
-    protected $repositoryClass;
+    protected $interfaceClass, $repositoryClass, $modelClass;
 
     /**
      * Execute the console command.
@@ -51,15 +50,17 @@ class MakeRepositoryCommand extends GeneratorCommand
             $this->getOptionsInput();
 
             $this->checkOptionsInput();;
-
+    
             $this->makeRepositoryDirectory();
-
+    
             $this->createBaseInterface();
-
+    
             $this->createBaseRepository();
-
+    
             $this->createInterface();
 
+            $this->allocateOrCreateModel();
+    
             $this->createRepository();
 
             $this->mergeRepositoryConfig();
@@ -69,6 +70,26 @@ class MakeRepositoryCommand extends GeneratorCommand
             report($e);
             $this->error($e->getMessage());
         }
+    }
+
+    /**
+     * Allocate or Create model if not exist
+     *
+     * @param string $model
+     *
+     * @return void
+     */
+    public function allocateOrCreateModel($model = null)
+    {
+        $model = $model ?? $this->modelInput;
+        $name = $this->qualifyClass($model);
+        $path = $this->getPath($name);
+
+        if ($this->files->missing($path) && $this->confirm('This model is not existed. Do you wish to create?')) {
+            Artisan::call('make:model', ['name' => $this->modelInput]);
+        }
+
+        $this->modelClass = '\\'.$name;
     }
 
     /**
@@ -90,7 +111,7 @@ class MakeRepositoryCommand extends GeneratorCommand
                 $this->interfaceClass =>  $this->repositoryClass
             ]);
         }
-
+        
         $stub = $this->files->get(__DIR__.'/../stubs/repositories.stub');
         $repo = '';
         foreach ($content as $key => $value) {
@@ -188,7 +209,7 @@ class MakeRepositoryCommand extends GeneratorCommand
     {
         $tmp = explode('\\', $interface);
         $interface = trim(array_pop($tmp));
-        $model = str_replace('/', '\\', $this->modelInput);
+        $model = str_replace('/', '\\', $this->modelClass);
 
         return str_replace(
             ['DummyNamespace', 'DummyRepositoryClass', 'DummyRepositoryInterface', 'DummyModel'],
@@ -242,7 +263,7 @@ class MakeRepositoryCommand extends GeneratorCommand
             $this->makeDirectory($path);
 
             $this->files->put($path, $this->sortImports($this->buildInterface($interfaceName)));
-
+    
             $this->interfaceClass = $interfaceName;
         }
     }
@@ -312,7 +333,6 @@ class MakeRepositoryCommand extends GeneratorCommand
         $this->interfaceInput = $this->getInterfaceInput();
         $this->repositoryInput = $this->getRepositoryInput();
         $this->modelInput = $this->getModelInput();
-        $this->extendsInput = $this->getExtendsInput();
     }
 
     /**
@@ -343,16 +363,6 @@ class MakeRepositoryCommand extends GeneratorCommand
     public function getModelInput()
     {
         return trim($this->option('model'));
-    }
-
-    /**
-     * Get extends input
-     *
-     * @return void
-     */
-    public function getExtendsInput()
-    {
-        return trim($this->option('extends'));
     }
 
     /**
