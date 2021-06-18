@@ -1,0 +1,16 @@
+<?php
+
+namespace DummyNamespace;
+
+use DummyRootNamespaceHttp\Controller;
+use Illuminate\Http\Request;
+
+class DummyClass extends Controller
+{
+    protected $__RepositoryVariable__;
+
+    public function __construct(DummyInterface $__RepositoryVariable__)
+    {
+        $this->__RepositoryVariable__ = $__RepositoryVariable__;        
+    }
+}

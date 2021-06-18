@@ -13,7 +13,7 @@ class MakeRepositoryCommand extends GeneratorCommand
      *
      * @var string
      */
-    protected $signature = 'make:repository {--interface= : Generate the Interface file} {--repository= : Generate the Repository file} {--model= : Allocate or Create the Model}';
+    protected $signature = 'make:repository {--interface= : Generate the Interface file} {--repository= : Generate the Repository file} {--model= : Allocate or Create the Model} {--controller= : Generate the Controller file}';
 
     /**
      * The console command description.
@@ -35,7 +35,7 @@ class MakeRepositoryCommand extends GeneratorCommand
 
     protected $baseRepository = 'BaseRepository';
 
-    protected $interfaceInput, $repositoryInput, $modelInput;
+    protected $interfaceInput, $repositoryInput, $modelInput, $controllerInput;
 
     protected $interfaceClass, $repositoryClass, $modelClass;
 
@@ -65,11 +65,78 @@ class MakeRepositoryCommand extends GeneratorCommand
 
             $this->mergeRepositoryConfig();
 
+            $this->createController();
+
             $this->info($this->type.' created successfully.');
         } catch (\Exception $e) {
             report($e);
             $this->error($e->getMessage());
         }
+    }
+
+    /**
+     * Create controller file
+     *
+     * @param mixed $controller
+     *
+     * @return void
+     */
+    public function createController($controller = null)
+    {
+        $controller = $controller ?? $this->controllerInput;
+        if (Str::contains($controller, '@resource')) {
+            $controller = trim(implode('', array_slice(explode('@', $controller), 0, 1)), '\\');
+        }
+        $name = $this->qualifyFile($controller, true);
+        $path = $this->getPath($name);
+
+        if ($this->files->missing($path)) {
+            $this->makeDirectory($path);
+
+            $this->files->put($path, $this->sortImports($this->buildController($name, $this->interfaceClass)));
+
+            $this->repositoryClass = $name;
+        }
+    }
+
+    /**
+     * Build controller
+     *
+     * @param string $name
+     * @param string $interface
+     * @param mixed $baseStub
+     *
+     * @return void
+     */
+    protected function buildController($name, $interface, $baseStub=null)
+    {
+        if (is_null($baseStub)) {
+            $baseStub = Str::contains($this->controllerInput, '@resource') ? __DIR__.'/../stubs/controller.stub' : __DIR__.'/../stubs/controller.plain.stub';
+        }
+        $stub = $this->files->get($baseStub);
+
+        return $this->replaceController($stub, $name, $interface);
+    }
+
+    /**
+     * Replace controller content
+     *
+     * @param string $stub
+     * @param string $name
+     * @param string $interface
+     *
+     * @return void
+     */
+    public function replaceController(&$stub, $name, $interface)
+    {
+        $tmp = explode('\\', $interface);
+        $interface = trim(array_pop($tmp));
+
+        return str_replace(
+            ['DummyNamespace', 'DummyClass', '__RepositoryVariable__', 'DummyInterface', 'DummyRootNamespaceHttp'],
+            [$this->getNamespace($name), $this->replaceClassName($name), Str::camel($interface), $interface, $this->getNamespaceHttpController()],
+            $stub
+        );
     }
 
     /**
@@ -333,6 +400,7 @@ class MakeRepositoryCommand extends GeneratorCommand
         $this->interfaceInput = $this->getInterfaceInput();
         $this->repositoryInput = $this->getRepositoryInput();
         $this->modelInput = $this->getModelInput();
+        $this->controllerInput = $this->getControllerInput();
     }
 
     /**
@@ -363,6 +431,16 @@ class MakeRepositoryCommand extends GeneratorCommand
     public function getModelInput()
     {
         return trim($this->option('model'));
+    }
+
+    /**
+     * Get controller input
+     *
+     * @return void
+     */
+    public function getControllerInput()
+    {
+        return trim($this->option('controller'));
     }
 
     /**
@@ -398,17 +476,27 @@ class MakeRepositoryCommand extends GeneratorCommand
     }
 
     /**
+     * Get default controller namespace
+     *
+     * @return string
+     */
+    public function getNamespaceHttpController()
+    {
+        return $this->rootNamespace().'Http\Controllers';
+    }
+
+    /**
      * Qualify file
      *
      * @param string $class
      *
      * @return string
      */
-    public function qualifyFile($class)
+    public function qualifyFile($class, $isController=false)
     {
         $class = ltrim($class, '\\/');
 
-        $rootNamespace = $this->getDefaultRepositoryNamespace();
+        $rootNamespace = $isController ? $this->getNamespaceHttpController() : $this->getDefaultRepositoryNamespace();
 
         if (Str::startsWith($class, $rootNamespace)) {
             return $class;
@@ -417,7 +505,7 @@ class MakeRepositoryCommand extends GeneratorCommand
         $class = str_replace('/', '\\', $class);
 
         return $this->qualifyFile(
-            $this->getDefaultNamespace(trim($rootNamespace, '\\')).'\\'.$class
+            $this->getDefaultNamespace(trim($rootNamespace, '\\')).'\\'.$class, $isController
         );
     }
 
