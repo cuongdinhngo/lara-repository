@@ -90,7 +90,7 @@ class MakeRepositoryCommand extends GeneratorCommand
         $name = $this->qualifyFile($controller, true);
         $path = $this->getPath($name);
 
-        if ($this->files->missing($path)) {
+        if ($controller && $this->files->missing($path)) {
             $this->makeDirectory($path);
 
             $this->files->put($path, $this->sortImports($this->buildController($name, $this->interfaceClass)));
