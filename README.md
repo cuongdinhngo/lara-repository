@@ -55,7 +55,7 @@ php artisan make:repository --interface=Staff/StaffInterface --repository=Staff/
 
 The `Repositories` directory is created when you run the command. All interface and repository files are stores in the `app/Repositories/Language` directory.
 
-Now inside `StaffController`, we inject `Interface` into the `construct` method. This action is called `Dependency Injection`
+Now inside `StaffController`, we inject `StaffInterface` into the `construct` method. This action is called `Dependency Injection`
 
 ```php
 <?php
@@ -172,6 +172,8 @@ The Repository Pattern also allows us to write less code inside our Controllers 
 
 ## Demo
 
-This is demo soure code.
+This is demo soure code
+
 [app/Repositories](https://github.com/cuongnd88/lara-colab/tree/master/alpha/app/Repositories)
+
 [Staff/StaffController.php](https://github.com/cuongnd88/lara-colab/blob/master/alpha/app/Http/Controllers/Staff/StaffController.php)
