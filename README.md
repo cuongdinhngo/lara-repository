@@ -30,15 +30,18 @@ return [
 3-Run `make:repository` command
 
 ```php
-php artisan make:repository --interface=User/UserInterface --repository=User/UserRepository --model=Models/User
+php artisan make:repository --interface=User/UserInterface --repository=User/UserRepository --model=Models/User --controller=User/UserController
 
 ```
 
-_`--interface` option is to indicate the Interface file._
+_`--interface` is to indicate the Interface file._
 
-_`--repository` option is to indicate the Repository file._
+_`--repository` is to indicate the Repository file._
 
-_`--model` option is to allocate the Model. If not exists, it will confirm to create a model._
+_`--model` is to allocate the Model. If not exists, it will confirm to create a model._
+
+_`--controller` option is to create the Controller file. With `@resource`, it generates a resource controller class._
+
 
 ## Sample Usage
 
@@ -46,27 +49,109 @@ _`--model` option is to allocate the Model. If not exists, it will confirm to cr
 Let start `code less` by running the command:
 
 ```php
-php artisan make:repository --interface=Language/LanguageInterface --repository=Language/LanguageRepository --model=Models/Language
+php artisan make:repository --interface=Staff/StaffInterface --repository=Staff/StaffRepository --model=Models/Staff --controller=Staff/StaffController@resource
 
 ```
 
 The `Repositories` directory is created when you run the command. All interface and repository files are stores in the `app/Repositories/Language` directory.
 
-Now inside `LanguageController`, we inject `LanguageInterface` into the `construct` method. This action is called `Dependency Injection`
+Now inside `StaffController`, we inject `Interface` into the `construct` method. This action is called `Dependency Injection`
 
 ```php
-. . . .
-use App\Repositories\Language\LanguageInterface;
+<?php
 
-class LanguageController extends Controller
+namespace App\Http\Controllers\Staff;
+
+use App\Http\Controllers\Controller;
+use App\Repositories\Staff\StaffInterface;
+use Illuminate\Http\Request;
+
+class StaffController extends Controller
 {
-    protected $langRepo;
+    protected $staffInterface;
 
-    public function __construct(LanguageInterface $langRepo)
+    public function __construct(StaffInterface $staffInterface)
     {
-        $this->langRepo = $langRepo;        
+        $this->staffInterface = $staffInterface;        
     }
-. . . .
+
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function index()
+    {
+        //
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function create()
+    {
+        //
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function store(Request $request)
+    {
+        //
+    }
+
+    /**
+     * Display the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function show($id)
+    {
+        //
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function edit($id)
+    {
+        //
+    }
+
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function update(Request $request, $id)
+    {
+        //
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy($id)
+    {
+        //
+    }
+}
+
 ```
 
 Please take a look the auto-generated `repositories.php` in `config` directory
@@ -75,7 +160,9 @@ Please take a look the auto-generated `repositories.php` in `config` directory
 <?php
 //config/repositories.php
 return [
-	\App\Repositories\Language\LanguageInterface::class => \App\Repositories\Language\LanguageRepository::class,
+    \App\Repositories\User\UserInterface::class => \App\Repositories\User\UserRepository::class,
+    \App\Repositories\Staff\StaffInterface::class => \App\Repositories\Staff\StaffRepository::class,
+    \App\Repositories\Language\LanguageInterface::class => \App\Repositories\Language\LanguageRepository::class,
 
 ];
 
@@ -86,5 +173,5 @@ The Repository Pattern also allows us to write less code inside our Controllers 
 ## Demo
 
 This is demo soure code.
-[Laravel Colab](https://github.com/cuongnd88/lara-colab/blob/master/alpha/app/Http/Controllers/Language/LanguageController.php)
-
+[app/Repositories](https://github.com/cuongnd88/lara-colab/tree/master/alpha/app/Repositories)
+[Staff/StaffController.php](https://github.com/cuongnd88/lara-colab/blob/master/alpha/app/Http/Controllers/Staff/StaffController.php)
