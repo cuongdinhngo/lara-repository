@@ -69,6 +69,18 @@ class LanguageController extends Controller
 . . . .
 ```
 
+Please take a look the auto-generated `repositories.php` in `config` directory
+
+```php
+<?php
+//config/repositories.php
+return [
+	\App\Repositories\Language\LanguageInterface::class => \App\Repositories\Language\LanguageRepository::class,
+
+];
+
+```
+
 The Repository Pattern also allows us to write less code inside our Controllers and that makes it even better rather having a giant code in the Controller which isn't what we want if we are aiming for better maintainability and readability. Let's keep it that way, clean controllers.
 
 ## Demo
