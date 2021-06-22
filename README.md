@@ -55,7 +55,7 @@ php artisan make:repository --interface=Staff/StaffInterface --repository=Staff/
 
 The `Repositories` directory is created when you run the command. All interface and repository files are stores in the `app/Repositories/Language` directory.
 
-Now inside `StaffController`, we inject `StaffInterface` into the `construct` method. This action is called `Dependency Injection`
+Now inside `StaffController`, `StaffInterface` already injected into the `construct` method. This action is called `Dependency Injection`
 
 ```php
 <?php
