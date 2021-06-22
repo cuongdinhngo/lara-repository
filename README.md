@@ -4,7 +4,7 @@ A repository is a separation between a domain and a persistent layer. The reposi
 
 The main idea to use `Repository Pattern` in a Laravel application is to create a bridge between models and controllers. This pattern keeps your Laravel code clean and safe, it is worth using repositories to separate the responsibility for which the model should never be responsible.
 
-This package assists to automatically generate the Interface and Repository files in saving your time and supporting to focus on implementing the logic. `Especially, you do not need binding the interface and repository class in Service provider class`
+This package assists to automatically generate the Interface, Repository, Model and Controller files in saving your time and supporting to focus on implementing the logic. `Especially, you do not need binding the interface and repository class in Service provider class`
 
 1-Install `cuongnd88/lara-repository` using Composer.
 
